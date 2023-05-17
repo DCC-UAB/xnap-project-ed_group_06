@@ -31,3 +31,5 @@ def test(model, test_loader, device="cuda", save:bool= True):
                           dynamic_axes={'input': {0: 'batch_size'},  # variable length axes
                                         'output': {0: 'batch_size'}})
         wandb.save("model.onnx")
+
+        #hola prova 17/05
