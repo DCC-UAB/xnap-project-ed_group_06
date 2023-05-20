@@ -44,7 +44,7 @@
 import logging
 import os
 from keras.models import Sequential
-from keras.layers.recurrent import LSTM
+from keras.layers import LSTM
 from keras.layers import Dense
 from keras.optimizers import Adam
 
@@ -128,5 +128,5 @@ model.save(model_filename)
 # Creates a json file
 print("creating .json file....")
 model_json = model.to_json()
-f = Path("./lstm_genre_classifier_lstm.json")
+f = os.Path("./lstm_genre_classifier_lstm.json")
 f.write_text(model_json)
