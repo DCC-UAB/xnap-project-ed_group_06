@@ -43,6 +43,7 @@
 
 import logging
 import os
+from pathlib import Path
 from keras.models import Sequential
 from keras.layers import LSTM
 from keras.layers import Dense
@@ -98,7 +99,7 @@ model.summary()
 
 print("Training ...")
 batch_size = 35  # num of training examples per minibatch
-num_epochs = 400
+num_epochs = 200
 model.fit(
     genre_features.train_X,
     genre_features.train_Y,
@@ -128,5 +129,5 @@ model.save(model_filename)
 # Creates a json file
 print("creating .json file....")
 model_json = model.to_json()
-f = os.Path("./lstm_genre_classifier_lstm.json")
+f = Path("./lstm_genre_classifier_lstm.json")
 f.write_text(model_json)
