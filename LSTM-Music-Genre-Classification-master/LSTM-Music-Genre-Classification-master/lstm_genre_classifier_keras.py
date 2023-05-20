@@ -99,7 +99,7 @@ model.summary()
 
 print("Training ...")
 batch_size = 35  # num of training examples per minibatch
-num_epochs = 200
+num_epochs = 400
 model.fit(
     genre_features.train_X,
     genre_features.train_Y,

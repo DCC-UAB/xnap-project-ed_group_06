@@ -94,7 +94,7 @@ def main():
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
     batch_size = 35  # num of training examples per minibatch
-    num_epochs = 400
+    num_epochs = 20 #400
 
     # Define model
     print("Build LSTM RNN model ...")
@@ -119,6 +119,7 @@ def main():
     num_dev_batches = int(dev_X.shape[0] / batch_size)
 
     val_loss_list, val_accuracy_list, epoch_list = [], [], []
+    train_loss_list, train_accuracy_list = [], []
 
     print("Training ...")
     for epoch in range(num_epochs):
@@ -213,20 +214,28 @@ def main():
             epoch_list.append(epoch)
             val_accuracy_list.append(val_acc / num_dev_batches)
             val_loss_list.append(val_running_loss / num_dev_batches)
+            train_accuracy_list.append(train_acc / num_batches)
+            train_loss_list.append(train_running_loss / num_dev_batches)
 
     # visualization loss
-    plt.plot(epoch_list, val_loss_list)
+    plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
+    plt.plot(epoch_list, train_loss_list, color = "blue", label = "Train loss")
     plt.xlabel("# of epochs")
     plt.ylabel("Loss")
     plt.title("LSTM: Loss vs # epochs")
+    plt.legend()
+    plt.savefig('graph1.png')
     plt.show()
+    plt.clf()
 
     # visualization accuracy
-    plt.plot(epoch_list, val_accuracy_list, color="red")
+    plt.plot(epoch_list, val_accuracy_list, color="red", label = "Val Acc")
+    plt.plot(epoch_list, train_accuracy_list, color = "blue", label = "Train Acc")
     plt.xlabel("# of epochs")
     plt.ylabel("Accuracy")
     plt.title("LSTM: Accuracy vs # epochs")
-    # plt.savefig('graph.png')
+    plt.legend()
+    plt.savefig('graph.png')
     plt.show()
 
 
