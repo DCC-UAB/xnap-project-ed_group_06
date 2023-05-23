@@ -19,11 +19,28 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import numpy as np
 
 from GenreFeatureData import (
     GenreFeatureData,
 )  # local python class with Audio feature extraction (librosa)
 
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = np.inf
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
 
 # class definition
 class LSTM(nn.Module):
@@ -35,7 +52,10 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers)
+        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
+
+        # batchnormalisation
+        self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
@@ -45,7 +65,8 @@ class LSTM(nn.Module):
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
         lstm_out, hidden = self.lstm(input, hidden)
-        logits = self.linear(lstm_out[-1])              # equivalent to return_sequences=False from Keras
+        logits = self.batch(lstm_out[-1])
+        logits = self.linear(logits)              # equivalent to return_sequences=False from Keras
         genre_scores = F.log_softmax(logits, dim=1)
         return genre_scores, hidden
 
@@ -94,16 +115,17 @@ def main():
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
     batch_size = 35  # num of training examples per minibatch
-    num_epochs = 20 #400
+    num_epochs = 100 #400
 
     # Define model
     print("Build LSTM RNN model ...")
     model = LSTM(
         input_dim=33, hidden_dim=128, batch_size=batch_size, output_dim=8, num_layers=2
     )
+
     loss_function = nn.NLLLoss()  # expects ouputs from LogSoftmax
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.1)
 
     # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False
@@ -114,6 +136,9 @@ def main():
     else:
         print("\nNo GPU, training on CPU")
 
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # model.to(device)
+
     # all training data (epoch) / batch_size == num_batches (12)
     num_batches = int(train_X.shape[0] / batch_size)
     num_dev_batches = int(dev_X.shape[0] / batch_size)
@@ -122,6 +147,15 @@ def main():
     train_loss_list, train_accuracy_list = [], []
 
     print("Training ...")
+
+    #Inicialització random i normalitzada
+    for name, w in model.named_parameters():
+        if "weight" in name:
+            nn.init.xavier_uniform_(w)
+        
+        if "bias" in name:
+            nn.init.zeros_(w) 
+
     for epoch in range(num_epochs):
 
         train_running_loss, train_acc = 0.0, 0.0
@@ -216,6 +250,7 @@ def main():
             val_loss_list.append(val_running_loss / num_dev_batches)
             train_accuracy_list.append(train_acc / num_batches)
             train_loss_list.append(train_running_loss / num_dev_batches)
+        
 
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
