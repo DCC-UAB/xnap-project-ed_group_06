@@ -25,23 +25,6 @@ from GenreFeatureData import (
     GenreFeatureData,
 )  # local python class with Audio feature extraction (librosa)
 
-class EarlyStopper:
-    def __init__(self, patience=1, min_delta=0):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.counter = 0
-        self.min_validation_loss = np.inf
-
-    def early_stop(self, validation_loss):
-        if validation_loss < self.min_validation_loss:
-            self.min_validation_loss = validation_loss
-            self.counter = 0
-        elif validation_loss > (self.min_validation_loss + self.min_delta):
-            self.counter += 1
-            if self.counter >= self.patience:
-                return True
-        return False
-
 # class definition
 class LSTM(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size, output_dim=8, num_layers=2):
@@ -60,15 +43,18 @@ class LSTM(nn.Module):
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
-    def forward(self, input, hidden=None):
+    def forward(self, input, h, c):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        lstm_out, hidden = self.lstm(input, hidden)
-        logits = self.batch(lstm_out[-1])
-        logits = self.linear(logits)              # equivalent to return_sequences=False from Keras
-        genre_scores = F.log_softmax(logits, dim=1)
-        return genre_scores, hidden
+        out, (h, c) = self.lstm(input, (h, c))
+        out = self.batch(out[-1])
+        out = self.linear(out)
+        return out, h, c
+    
+    def init_hidden(self, batch_size):
+        " Initialize the hidden state of the RNN to zeros"
+        return nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim)), nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim))
 
     def get_accuracy(self, logits, target):
         """ compute accuracy for training round """
@@ -115,7 +101,7 @@ def main():
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
     batch_size = 35  # num of training examples per minibatch
-    num_epochs = 100 #400
+    num_epochs = 400
 
     # Define model
     print("Build LSTM RNN model ...")
@@ -123,7 +109,7 @@ def main():
         input_dim=33, hidden_dim=128, batch_size=batch_size, output_dim=8, num_layers=2
     )
 
-    loss_function = nn.NLLLoss()  # expects ouputs from LogSoftmax
+    loss_function = nn.CrossEntropyLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax
 
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.1)
 
@@ -136,8 +122,8 @@ def main():
     else:
         print("\nNo GPU, training on CPU")
 
-    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # model.to(device)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
     # all training data (epoch) / batch_size == num_batches (12)
     num_batches = int(train_X.shape[0] / batch_size)
@@ -149,20 +135,22 @@ def main():
     print("Training ...")
 
     #Inicialització random i normalitzada
-    for name, w in model.named_parameters():
-        if "weight" in name:
-            nn.init.xavier_uniform_(w)
+    # for name, w in model.named_parameters():
+    #     if "weight_ih" in name:
+    #         nn.init.xavier_uniform(w.data)
         
-        if "bias" in name:
-            nn.init.zeros_(w) 
+    #     if "bias" in name:
+    #         nn.init.zeros_(w.data) 
 
     for epoch in range(num_epochs):
 
         train_running_loss, train_acc = 0.0, 0.0
 
         # Init hidden state - if you don't want a stateful LSTM (between epochs)
-        hidden_state = None
+        h_0, c_0 = model.init_hidden(batch_size)
+
         for i in range(num_batches):
+            h_0, c_0 = h_0.to(device), c_0.to(device)
 
             # zero out gradient, so they don't accumulate btw batches
             model.zero_grad()
@@ -176,22 +164,18 @@ def main():
                 train_X[i * batch_size: (i + 1) * batch_size, ],
                 train_Y[i * batch_size: (i + 1) * batch_size, ],
             )
-
             # Reshape input & targets to "match" what the loss_function wants
             X_local_minibatch = X_local_minibatch.permute(1, 0, 2)
 
             # NLLLoss does not expect a one-hot encoded vector as the target, but class indices
             y_local_minibatch = torch.max(y_local_minibatch, 1)[1]
 
-            y_pred, hidden_state = model(X_local_minibatch, hidden_state)  # forward pass
+            X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
+            
+            y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)  # forward pass
 
             # Stateful = False for training. Do we go Stateful = True during inference/prediction time?
-            if not stateful:
-                hidden_state = None
-            else:
-                h_0, c_0 = hidden_state
-                h_0.detach_(), c_0.detach_()
-                hidden_state = (h_0, c_0)
+            h_0.detach_(), c_0.detach_()
 
             loss = loss_function(y_pred, y_local_minibatch)  # compute loss
             loss.backward()  # backward pass
@@ -201,7 +185,7 @@ def main():
             train_acc += model.get_accuracy(y_pred, y_local_minibatch)
 
         print(
-            "Epoch:  %d | NLLoss: %.4f | Train Accuracy: %.2f"
+            "Epoch:  %d | Loss: %.4f | Train Accuracy: %.2f"
             % (epoch, train_running_loss / num_batches, train_acc / num_batches)
         )
 
@@ -213,18 +197,25 @@ def main():
             with torch.no_grad():
                 model.eval()
 
-                hidden_state = None
+                h_0, c_0 = model.init_hidden(batch_size)                
+                
                 for i in range(num_dev_batches):
+
+                    h_0, c_0 = h_0.to(device), c_0.to(device)
+
                     X_local_validation_minibatch, y_local_validation_minibatch = (
                         dev_X[i * batch_size: (i + 1) * batch_size, ],
                         dev_Y[i * batch_size: (i + 1) * batch_size, ],
                     )
+
                     X_local_minibatch = X_local_validation_minibatch.permute(1, 0, 2)
                     y_local_minibatch = torch.max(y_local_validation_minibatch, 1)[1]
 
-                    y_pred, hidden_state = model(X_local_minibatch, hidden_state)
-                    if not stateful:
-                        hidden_state = None
+                    X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
+
+                    y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
+                    # if not stateful:
+                    #     hidden_state = None
 
                     val_loss = loss_function(y_pred, y_local_minibatch)
 
@@ -235,7 +226,7 @@ def main():
 
                 model.train()  # reset to train mode after iterationg through validation data
                 print(
-                    "Epoch:  %d | NLLoss: %.4f | Train Accuracy: %.2f | Val Loss %.4f  | Val Accuracy: %.2f"
+                    "Epoch:  %d | Loss: %.4f | Train Accuracy: %.2f | Val Loss %.4f  | Val Accuracy: %.2f"
                     % (
                         epoch,
                         train_running_loss / num_batches,
