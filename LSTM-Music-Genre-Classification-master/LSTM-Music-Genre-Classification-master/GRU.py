@@ -35,7 +35,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
+        self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers) #bias = False) #dropout = 0.5)
 
         # ---------------------batchnormalisation---------------------------------------
         #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -43,24 +43,23 @@ class LSTM(nn.Module):
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
-    def forward(self, input, h, c):
+    def forward(self, input, h):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        lstm_out, hidden = self.lstm(input, hidden)
+        lstm_out, hidden = self.lstm(input, h)
         logits = self.linear(lstm_out[-1])              # equivalent to return_sequences=False from Keras
         genre_scores = F.log_softmax(logits, dim=1)
         return genre_scores, hidden
     
-    #--------------------------------------------------------------------------------------------
-    '''
+    #----afegit-----------------------------------------------------------------------
     def init_hidden(self, batch_size):
-        " Initialize the hidden state of the RNN to zeros"
-        return nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim)), nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim))
-    '''
+        "Initialize the hidden state of the RNN to zeros"
+        return nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim)) #,nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim))
+    
     
     def get_accuracy(self, logits, target):
-        """ compute accuracy for training round """
+        """compute accuracy for training round"""
         corrects = (
                 torch.max(logits, 1)[1].view(target.size()).data == target.data
         ).sum()
@@ -155,7 +154,7 @@ def main():
         
         #-----------------------------------------2 hidden layers--------------------------------
         #h_0, c_0 = model.init_hidden(batch_size)
-        hidden_state = None
+        hidden_state = model.init_hidden(batch_size)
 
 
         for i in range(num_batches):
@@ -192,12 +191,14 @@ def main():
             # Stateful = False for training. Do we go Stateful = True during inference/prediction time?
             #----------------------------------------------------------------
             #h_0.detach_(), c_0.detach_()
-            if not stateful:
-                hidden_state = None
-            else:
-                h_0, c_0 = hidden_state
-                h_0.detach_(), c_0.detach_()
-                hidden_state = (h_0, c_0)
+            hidden_state.detach_()
+            # if not stateful:
+            #     hidden_state = None
+            # else:
+                
+            #     h_0, c_0 = hidden_state
+            #     h_0.detach_(), c_0.detach_()
+            #     hidden_state = (h_0, c_0)
 
             loss = loss_function(y_pred, y_local_minibatch)  # compute loss
             loss.backward()  # backward pass
@@ -220,7 +221,7 @@ def main():
                 model.eval()
                 #------------------------------------------------
                 #h_0, c_0 = model.init_hidden(batch_size)     
-                hidden_state = None
+                hidden_state = model.init_hidden(batch_size)
 
                 for i in range(num_dev_batches):
                     #------------------------------------------
@@ -242,8 +243,8 @@ def main():
                     #y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
                     y_pred, hidden_state = model(X_local_minibatch, hidden_state)
 
-                    if not stateful:
-                        hidden_state = None
+                    # if not stateful:
+                    #     hidden_state = None
 
                     val_loss = loss_function(y_pred, y_local_minibatch)
 
