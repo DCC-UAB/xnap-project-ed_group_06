@@ -34,8 +34,8 @@ class LSTM(nn.Module):
         self.batch_size = batch_size
         self.num_layers = num_layers
 
-        # setup LSTM layer
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
+        # setup LSTM layers
+        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
 
         # ---------------------batchnormalisation---------------------------------------
         #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -276,9 +276,9 @@ def main():
     plt.plot(epoch_list, train_loss_list, color = "blue", label = "Train loss")
     plt.xlabel("# of epochs")
     plt.ylabel("Loss")
-    plt.title("LSTM: Loss vs # epochs")
+    plt.title("RNN: Loss vs # epochs")
     plt.legend()
-    plt.savefig('graphLossGRU.png')
+    plt.savefig('graphLossRNN.png')
     plt.show()
     plt.clf()
 
@@ -287,9 +287,9 @@ def main():
     plt.plot(epoch_list, train_accuracy_list, color = "blue", label = "Train Acc")
     plt.xlabel("# of epochs")
     plt.ylabel("Accuracy")
-    plt.title("LSTM: Accuracy vs # epochs")
+    plt.title("RNN: Accuracy vs # epochs")
     plt.legend()
-    plt.savefig('graphAccuracyGRU.png')
+    plt.savefig('graphAccuracyRNN.png')
     plt.show()
 
 
