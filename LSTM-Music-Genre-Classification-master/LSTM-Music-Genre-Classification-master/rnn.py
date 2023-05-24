@@ -34,8 +34,8 @@ class LSTM(nn.Module):
         self.batch_size = batch_size
         self.num_layers = num_layers
 
-        # setup LSTM layer
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
+        # setup LSTM layers
+        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers)
 
         # ---------------------batchnormalisation---------------------------------------
         #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -43,21 +43,21 @@ class LSTM(nn.Module):
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
-    def forward(self, input, h, c):
+    def forward(self, input, h):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        lstm_out, hidden = self.lstm(input, hidden)
+        lstm_out, hidden = self.lstm(input, h)
         logits = self.linear(lstm_out[-1])              # equivalent to return_sequences=False from Keras
         genre_scores = F.log_softmax(logits, dim=1)
         return genre_scores, hidden
     
     #--------------------------------------------------------------------------------------------
-    '''
+    
     def init_hidden(self, batch_size):
         " Initialize the hidden state of the RNN to zeros"
-        return nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim)), nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim))
-    '''
+        return nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim))
+    
     
     def get_accuracy(self, logits, target):
         """ compute accuracy for training round """
@@ -107,7 +107,7 @@ def main():
     num_epochs = 400
 
     # Define model
-    print("Build LSTM RNN model ...")
+    print("Build Rnn RNN model ...")
     model = LSTM(
         input_dim=33, hidden_dim=128, batch_size=batch_size, output_dim=8, num_layers=2
     )
@@ -155,7 +155,7 @@ def main():
         
         #-----------------------------------------2 hidden layers--------------------------------
         #h_0, c_0 = model.init_hidden(batch_size)
-        hidden_state = None
+        hidden_state = model.init_hidden(batch_size)
 
 
         for i in range(num_batches):
@@ -192,12 +192,9 @@ def main():
             # Stateful = False for training. Do we go Stateful = True during inference/prediction time?
             #----------------------------------------------------------------
             #h_0.detach_(), c_0.detach_()
-            if not stateful:
-                hidden_state = None
-            else:
-                h_0, c_0 = hidden_state
-                h_0.detach_(), c_0.detach_()
-                hidden_state = (h_0, c_0)
+            
+            hidden_state.detach_()
+            
 
             loss = loss_function(y_pred, y_local_minibatch)  # compute loss
             loss.backward()  # backward pass
@@ -220,7 +217,7 @@ def main():
                 model.eval()
                 #------------------------------------------------
                 #h_0, c_0 = model.init_hidden(batch_size)     
-                hidden_state = None
+                hidden_state =  model.init_hidden(batch_size)
 
                 for i in range(num_dev_batches):
                     #------------------------------------------
@@ -242,8 +239,7 @@ def main():
                     #y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
                     y_pred, hidden_state = model(X_local_minibatch, hidden_state)
 
-                    if not stateful:
-                        hidden_state = None
+                    
 
                     val_loss = loss_function(y_pred, y_local_minibatch)
 
@@ -276,9 +272,9 @@ def main():
     plt.plot(epoch_list, train_loss_list, color = "blue", label = "Train loss")
     plt.xlabel("# of epochs")
     plt.ylabel("Loss")
-    plt.title("LSTM: Loss vs # epochs")
+    plt.title("RNN: Loss vs # epochs")
     plt.legend()
-    plt.savefig('graphLossGRU.png')
+    plt.savefig('graphLossRNN.png')
     plt.show()
     plt.clf()
 
@@ -287,9 +283,9 @@ def main():
     plt.plot(epoch_list, train_accuracy_list, color = "blue", label = "Train Acc")
     plt.xlabel("# of epochs")
     plt.ylabel("Accuracy")
-    plt.title("LSTM: Accuracy vs # epochs")
+    plt.title("RNN: Accuracy vs # epochs")
     plt.legend()
-    plt.savefig('graphAccuracyGRU.png')
+    plt.savefig('graphAccuracyRNN.png')
     plt.show()
 
 
