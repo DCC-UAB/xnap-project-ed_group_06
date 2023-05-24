@@ -43,7 +43,7 @@ class LSTM(nn.Module):
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
-    def forward(self, input, h, c):
+    def forward(self, input, h):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
@@ -195,9 +195,9 @@ def main():
             if not stateful:
                 hidden_state = None
             else:
-                h_0, c_0 = hidden_state
-                h_0.detach_(), c_0.detach_()
-                hidden_state = (h_0, c_0)
+                h_0 = hidden_state
+                h_0.detach_()
+                hidden_state = (h_0)
 
             loss = loss_function(y_pred, y_local_minibatch)  # compute loss
             loss.backward()  # backward pass
