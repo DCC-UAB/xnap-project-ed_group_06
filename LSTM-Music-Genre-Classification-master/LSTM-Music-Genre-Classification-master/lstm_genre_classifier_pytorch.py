@@ -101,7 +101,7 @@ def main():
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
     batch_size = 35  # num of training examples per minibatch
-    num_epochs = 400
+    num_epochs = 100 #400
 
     # Define model
     print("Build LSTM RNN model ...")
@@ -296,8 +296,6 @@ def main():
     cm = confusion_matrix(y, prediccions)
     disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = [
         "classical",
-        "country",
-        "disco",
         "hiphop",
         "jazz",
         "metal",
