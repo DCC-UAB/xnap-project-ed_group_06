@@ -72,5 +72,14 @@ print(output_file)
 #es carrega nou àudio
 sf.write(output_file, augmented_audio2, signal_rate)
 
+#------------------------shift-row-------------------------
+
+audio_roll = np.roll(au, 1600)
+plot_time_series(audio_roll)
+
+
+
+
+
 
 
