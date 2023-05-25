@@ -101,7 +101,7 @@ def main():
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
     batch_size = 35  # num of training examples per minibatch
-    num_epochs = 100 #400
+    num_epochs = 400
 
     # Define model
     print("Build LSTM RNN model ...")
@@ -287,11 +287,12 @@ def main():
             pred = y_pred.data.max(1, keepdim=True)[1].cpu().numpy().tolist()
             prediccions += pred
             
-            y += y_local_minibatch.numpy().tolist()
+            y += y_local_minibatch.cpu().numpy().tolist()
 
         return prediccions, y
 
     prediccions, y = evaluate(model, dev_X, dev_Y)
+
 
     cm = confusion_matrix(y, prediccions)
     disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = [
@@ -303,7 +304,9 @@ def main():
         "reggae",
     ])
     disp.plot(xticks_rotation="vertical")
-    
+    plt.savefig("ConfPlot.png")
+    plt.show()
+
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
     plt.plot(epoch_list, train_loss_list, color = "blue", label = "Train loss")
