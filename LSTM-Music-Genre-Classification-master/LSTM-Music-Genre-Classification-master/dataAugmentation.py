@@ -41,6 +41,7 @@ rate = 0.75 #velocitat àudio
 
 #data augmentation àudio --> soroll
 augmented_audio = librosa.effects.time_stretch(au, rate = rate)
+augmented_audio = augmented_audio[:661794]
 
 #plot àudio soroll
 #plot_time_series(augmented_audio)
