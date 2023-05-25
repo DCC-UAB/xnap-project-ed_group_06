@@ -22,11 +22,12 @@ def load_audio_file_no_limit(file_path):
 
 
 
-def plot_time_series(data):
+def plot_time_series(data,name):
     fig = plt.figure(figsize=(14, 8))
     plt.title('Raw wave ')
     plt.ylabel('Amplitude')
     plt.plot(np.linspace(0, 1, len(data)), data)
+    plt.savefig('data_aug_{}'.format(name))
     plt.show()
     
 
@@ -37,26 +38,39 @@ au = load_audio_file_no_limit(original_audio)
 rate = 0.75 #velocitat àudio
 
 #plot àudio original
-#plot_time_series(au)
+plot_time_series(au, 'original')
 
 #data augmentation àudio --> soroll
 augmented_audio = librosa.effects.time_stretch(au, rate = rate)
 augmented_audio = augmented_audio[:661794]
 
 #plot àudio soroll
-#plot_time_series(augmented_audio)
-
+plot_time_series(augmented_audio, 'time')
 
 signal_rate = 22050  # Tasa de muestreo de audio
 print(original_audio)
 
 #path nou àudio
 original_audio = original_audio.split('/')[-1].split('.')
-output_file = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_soroll.'+str(original_audio[2])
+output_file = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_time.'+str(original_audio[2])
 print(output_file)
 
 #es carrega nou àudio
 sf.write(output_file, augmented_audio, signal_rate)
+
+#-----------------------NOISE-----------------------------
+wn = np.random.randn(len(au))
+augmented_audio2 = au + 0.0075*wn
+
+#plot àudio noise
+plot_time_series(augmented_audio2, 'noise')
+
+#path nou àudio
+output_file = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_noise.'+str(original_audio[2])
+print(output_file)
+
+#es carrega nou àudio
+sf.write(output_file, augmented_audio2, signal_rate)
 
 
 
