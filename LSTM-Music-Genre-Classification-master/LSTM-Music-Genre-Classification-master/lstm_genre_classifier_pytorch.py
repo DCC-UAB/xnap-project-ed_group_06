@@ -20,10 +20,24 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import wandb
 
 from GenreFeatureData import (
     GenreFeatureData,
 )  # local python class with Audio feature extraction (librosa)
+
+wandb.init(
+    # set the wandb project where this run will be logged
+    project="music_project",
+    
+    # track hyperparameters and run metadata
+    config={
+    "learning_rate": 0.02,
+    "architecture": "LSTM",
+    "dataset": "no_dataset",
+    "epochs": 400,
+    }
+)
 
 # class definition
 class LSTM(nn.Module):
@@ -43,11 +57,19 @@ class LSTM(nn.Module):
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
+        self.conv1 = nn.Conv1d(in_channels=35, out_channels=32, kernel_size=3, padding = "same")
+        self.maxpool = nn.MaxPool1d(kernel_size=2)
+
+
     def forward(self, input, h, c):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        out, (h, c) = self.lstm(input, (h, c))
+        conv = self.conv1(input)
+        pool = self.maxpool(conv)
+        batch_size, num_channels, seq_length = pool.size()
+        flattened_output = pool.view(batch_size, -1, seq_length)
+        out, (h, c) = self.lstm(flattened_output, (h, c))
         out = self.batch(out[-1])
         out = self.linear(out)
         return out, h, c
@@ -250,13 +272,66 @@ def main():
                         val_acc / num_dev_batches,
                     )
                 )
+            
+            wandb.log({"acc_train": train_acc / num_batches, "loss_train": train_running_loss / num_batches})
+            wandb.log({"acc_validation": val_acc / num_dev_batches, "loss_validation": val_running_loss / num_dev_batches})
 
+            
             epoch_list.append(epoch)
             val_accuracy_list.append(val_acc / num_dev_batches)
             val_loss_list.append(val_running_loss / num_dev_batches)
             train_accuracy_list.append(train_acc / num_batches)
             train_loss_list.append(train_running_loss / num_dev_batches)
         
+    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+    @torch.no_grad()
+    def evaluate(model, dev_X, dev_Y):
+        prediccions = []
+        y = []
+
+        model.eval()
+
+        h_0, c_0 = model.init_hidden(batch_size)                
+        
+        for i in range(num_dev_batches):
+
+            h_0, c_0 = h_0.to(device), c_0.to(device)
+
+            X_local_validation_minibatch, y_local_validation_minibatch = (
+                dev_X[i * batch_size: (i + 1) * batch_size, ],
+                dev_Y[i * batch_size: (i + 1) * batch_size, ],
+            )
+
+            X_local_minibatch = X_local_validation_minibatch.permute(1, 0, 2)
+            y_local_minibatch = torch.max(y_local_validation_minibatch, 1)[1]
+
+            X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
+
+            y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
+                            
+            pred = y_pred.data.max(1, keepdim=True)[1].cpu().numpy().tolist()
+            prediccions += pred
+            
+            y += y_local_minibatch.cpu().numpy().tolist()
+
+        return prediccions, y
+
+    prediccions, y = evaluate(model, dev_X, dev_Y)
+
+
+    cm = confusion_matrix(y, prediccions)
+    disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = [
+        "classical",
+        "hiphop",
+        "jazz",
+        "metal",
+        "pop",
+        "reggae",
+    ])
+    disp.plot(xticks_rotation="vertical")
+    plt.savefig("ConfPlot.png")
+    plt.show()
 
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
