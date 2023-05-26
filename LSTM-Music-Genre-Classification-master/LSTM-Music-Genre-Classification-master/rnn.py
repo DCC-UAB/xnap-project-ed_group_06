@@ -275,11 +275,11 @@ def main():
 
         model.eval()
 
-        h_0, c_0 = model.init_hidden(batch_size)                
+        h_0  = model.init_hidden(batch_size)                
         
         for i in range(num_dev_batches):
 
-            h_0, c_0 = h_0.to(device), c_0.to(device)
+            h_0 = h_0.to(device)
 
             X_local_validation_minibatch, y_local_validation_minibatch = (
                 dev_X[i * batch_size: (i + 1) * batch_size, ],
@@ -291,7 +291,7 @@ def main():
 
             X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
 
-            y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
+            y_pred, h_0 = model(X_local_minibatch, h_0)
                             
             pred = y_pred.data.max(1, keepdim=True)[1].cpu().numpy().tolist()
             prediccions += pred
@@ -314,7 +314,7 @@ def main():
         "reggae",
     ])
     disp.plot(xticks_rotation="vertical")
-    plt.savefig("ConfPlot.png")
+    plt.savefig("ConfPlotRNN.png")
     plt.show()
 
 
