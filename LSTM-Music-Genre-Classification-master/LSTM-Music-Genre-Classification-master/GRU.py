@@ -20,10 +20,27 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import wandb
 
 from GenreFeatureData import (
     GenreFeatureData,
 )  # local python class with Audio feature extraction (librosa)
+
+# import sys
+# sys.executable = '/usr/bin/python3'
+
+# wandb.init(
+#     # set the wandb project where this run will be logged
+#     project="music_project",
+    
+#     # track hyperparameters and run metadata
+#     config={
+#     "learning_rate": 0.02,
+#     "architecture": "GRU",
+#     "dataset": "no_dataset",
+#     "epochs": 400,
+#     }
+# )
 
 # class definition
 class LSTM(nn.Module):
@@ -265,6 +282,9 @@ def main():
                     )
                 )
 
+            # wandb.log({"acc_train": train_acc / num_batches, "loss_train": train_running_loss / num_batches})
+            # wandb.log({"acc_validation": val_acc / num_dev_batches, "loss_validation": val_running_loss / num_dev_batches})
+            
             epoch_list.append(epoch)
             val_accuracy_list.append(val_acc / num_dev_batches)
             val_loss_list.append(val_running_loss / num_dev_batches)
