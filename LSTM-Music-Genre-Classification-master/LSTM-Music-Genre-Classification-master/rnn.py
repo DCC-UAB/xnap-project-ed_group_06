@@ -35,10 +35,10 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layers
-        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5)
+        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5) #dropout = 0.5
 
         # ---------------------batchnormalisation---------------------------------------
-        #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
+        self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
@@ -116,7 +116,7 @@ def main():
     loss_function = nn.NLLLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax #nn.CrossEntropyLoss()
 
     #----------------------------------------------------------------------------------
-    optimizer = optim.Adam(model.parameters(), lr=0.001) #weight_decay = 0.1
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01) #weight_decay = 0.1
 
     # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False
