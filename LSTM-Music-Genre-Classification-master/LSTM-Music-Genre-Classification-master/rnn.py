@@ -265,7 +265,58 @@ def main():
             val_loss_list.append(val_running_loss / num_dev_batches)
             train_accuracy_list.append(train_acc / num_batches)
             train_loss_list.append(train_running_loss / num_dev_batches)
+     
+    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+    @torch.no_grad()
+    def evaluate(model, dev_X, dev_Y):
+        prediccions = []
+        y = []
+
+        model.eval()
+
+        h_0, c_0 = model.init_hidden(batch_size)                
         
+        for i in range(num_dev_batches):
+
+            h_0, c_0 = h_0.to(device), c_0.to(device)
+
+            X_local_validation_minibatch, y_local_validation_minibatch = (
+                dev_X[i * batch_size: (i + 1) * batch_size, ],
+                dev_Y[i * batch_size: (i + 1) * batch_size, ],
+            )
+
+            X_local_minibatch = X_local_validation_minibatch.permute(1, 0, 2)
+            y_local_minibatch = torch.max(y_local_validation_minibatch, 1)[1]
+
+            X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
+
+            y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
+                            
+            pred = y_pred.data.max(1, keepdim=True)[1].cpu().numpy().tolist()
+            prediccions += pred
+            
+            y += y_local_minibatch.cpu().numpy().tolist()
+
+        return prediccions, y 
+     
+        
+
+    prediccions, y = evaluate(model, dev_X, dev_Y)
+
+    cm = confusion_matrix(y, prediccions)
+    disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = [
+        "classical",
+        "hiphop",
+        "jazz",
+        "metal",
+        "pop",
+        "reggae",
+    ])
+    disp.plot(xticks_rotation="vertical")
+    plt.savefig("ConfPlot.png")
+    plt.show()
+
 
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
