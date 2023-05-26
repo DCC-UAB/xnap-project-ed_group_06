@@ -316,6 +316,7 @@ def main():
     disp.plot(xticks_rotation="vertical")
     plt.savefig("ConfPlot.png")
     plt.show()
+    plt.clf()
 
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
