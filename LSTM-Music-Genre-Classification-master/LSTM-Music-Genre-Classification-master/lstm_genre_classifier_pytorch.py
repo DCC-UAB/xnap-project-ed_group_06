@@ -43,11 +43,19 @@ class LSTM(nn.Module):
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
+        self.conv1 = nn.Conv1d(in_channels=35, out_channels=32, kernel_size=3, padding = "same")
+        self.maxpool = nn.MaxPool1d(kernel_size=2)
+
+
     def forward(self, input, h, c):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        out, (h, c) = self.lstm(input, (h, c))
+        conv = self.conv1(input)
+        pool = self.maxpool(conv)
+        batch_size, num_channels, seq_length = pool.size()
+        flattened_output = pool.view(batch_size, -1, seq_length)
+        out, (h, c) = self.lstm(flattened_output, (h, c))
         out = self.batch(out[-1])
         out = self.linear(out)
         return out, h, c
