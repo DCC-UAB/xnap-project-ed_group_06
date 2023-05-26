@@ -52,7 +52,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers) #bias = False) #dropout = 0.5)
+        self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5) #bias = False) #dropout = 0.5)
 
         # ---------------------batchnormalisation---------------------------------------
         #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -120,10 +120,10 @@ def main():
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
     batch_size = 35  # num of training examples per minibatch
-    num_epochs = 400
+    num_epochs = 401
 
     # Define model
-    print("Build LSTM RNN model ...")
+    print("Build GRU model ...")
     model = LSTM(
         input_dim=33, hidden_dim=128, batch_size=batch_size, output_dim=8, num_layers=2
     )
@@ -292,12 +292,65 @@ def main():
             train_loss_list.append(train_running_loss / num_dev_batches)
         
 
+
+    from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+    @torch.no_grad()
+    def evaluate(model, dev_X, dev_Y):
+        prediccions = []
+        y = []
+
+        model.eval()
+
+        h_0  = model.init_hidden(batch_size)                
+        
+        for i in range(num_dev_batches):
+
+            h_0 = h_0.to(device)
+
+            X_local_validation_minibatch, y_local_validation_minibatch = (
+                dev_X[i * batch_size: (i + 1) * batch_size, ],
+                dev_Y[i * batch_size: (i + 1) * batch_size, ],
+            )
+
+            X_local_minibatch = X_local_validation_minibatch.permute(1, 0, 2)
+            y_local_minibatch = torch.max(y_local_validation_minibatch, 1)[1]
+
+            X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
+
+            y_pred, h_0 = model(X_local_minibatch, h_0)
+                            
+            pred = y_pred.data.max(1, keepdim=True)[1].cpu().numpy().tolist()
+            prediccions += pred
+            
+            y += y_local_minibatch.cpu().numpy().tolist()
+
+        return prediccions, y 
+     
+        
+
+    prediccions, y = evaluate(model, dev_X, dev_Y)
+
+    cm = confusion_matrix(y, prediccions)
+    disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = [
+        "classical",
+        "hiphop",
+        "jazz",
+        "metal",
+        "pop",
+        "reggae",
+    ])
+    disp.plot(xticks_rotation="vertical")
+    plt.savefig("ConfPlotGRU.png")
+    plt.show()
+    plt.clf()
+    
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
     plt.plot(epoch_list, train_loss_list, color = "blue", label = "Train loss")
     plt.xlabel("# of epochs")
     plt.ylabel("Loss")
-    plt.title("LSTM: Loss vs # epochs")
+    plt.title("GRU: Loss vs # epochs")
     plt.legend()
     plt.savefig('graphLossGRU.png')
     plt.show()
@@ -308,7 +361,7 @@ def main():
     plt.plot(epoch_list, train_accuracy_list, color = "blue", label = "Train Acc")
     plt.xlabel("# of epochs")
     plt.ylabel("Accuracy")
-    plt.title("LSTM: Accuracy vs # epochs")
+    plt.title("GRU: Accuracy vs # epochs")
     plt.legend()
     plt.savefig('graphAccuracyGRU.png')
     plt.show()
