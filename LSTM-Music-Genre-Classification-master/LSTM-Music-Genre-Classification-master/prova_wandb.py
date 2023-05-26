@@ -28,17 +28,5 @@ for epoch in range(2, epochs):
 # [optional] finish the wandb run, necessary in notebooks
 #wandb.finish()
 
-wandb.init(
-    # set the wandb project where this run will be logged
-    project="music_project",
-    
-    # track hyperparameters and run metadata
-    config={
-    "learning_rate": 0.02,
-    "architecture": "LSTM",
-    "dataset": "no_dataset",
-    "epochs": 400,
-    }
-)
 
-wandb.log({"acc": acc, "loss": loss})
+
