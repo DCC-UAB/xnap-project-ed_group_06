@@ -26,6 +26,49 @@ from GenreFeatureData import (
     GenreFeatureData,
 )  # local python class with Audio feature extraction (librosa)
 
+import torch
+from torch import nn
+from torch.autograd import Variable
+import torch.nn.functional as F
+
+
+class StackedAutoencoder(nn.Module):
+    def __init__(self, input_dim, hidden_dims):
+        super(StackedAutoencoder, self).__init__()
+        
+        self.encoders = nn.ModuleList()
+        self.decoders = nn.ModuleList()
+        
+        # Construir los encoders y decoders
+        for i in range(len(hidden_dims) - 1):
+            encoder = nn.Linear(hidden_dims[i], hidden_dims[i+1])
+            decoder = nn.Linear(hidden_dims[i+1], hidden_dims[i])
+            
+            self.encoders.append(encoder)
+            self.decoders.append(decoder)
+        
+    def forward(self, x):
+        encoded = x
+        
+        # Codificar
+        print("encoder")
+        for encoder in self.encoders:
+            print(encoded.size())
+            encoded = F.relu(encoder(encoded))
+        
+        decoded = encoded
+        
+        self.decoders = nn.ModuleList(reversed(self.decoders))
+        
+        # Decodificar
+        print("decoder")
+        for decoder in self.decoders:
+            print(decoded.size())
+            decoded = F.relu(decoder(decoded))
+        
+        return decoded
+
+
 
 # class definition
 class LSTM(nn.Module):
@@ -37,27 +80,25 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
+        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias=False, dropout=0.5)
 
         # batchnormalisation
-        self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
+        self.batch = nn.BatchNorm1d(num_features=self.hidden_dim)
+
+        input_size = input_dim
+        hidden_sizes = [input_dim, hidden_dim, 64, 32]  # Tamaños de las capas ocultas
+
+        # Crear el Stacked Autoencoder
+        self.stacked_autoencoder = StackedAutoencoder(input_size, hidden_sizes)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
-        self.conv1 = nn.Conv1d(in_channels=35, out_channels=32, kernel_size=3, padding = "same")
-        self.maxpool = nn.MaxPool1d(kernel_size=2)
-
-
     def forward(self, input, h, c):
-        # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
-        # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
-        # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        conv = self.conv1(input)
-        pool = self.maxpool(conv)
-        batch_size, num_channels, seq_length = pool.size()
-        flattened_output = pool.view(batch_size, -1, seq_length)
-        out, (h, c) = self.lstm(flattened_output, (h, c))
+        out = self.stacked_autoencoder(input)
+        print("forward")
+        print(out.size())
+        out, (h, c) = self.lstm(out, (h, c))
         out = self.batch(out[-1])
         out = self.linear(out)
         return out, h, c
@@ -121,7 +162,7 @@ def main():
 
     loss_function = nn.CrossEntropyLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.1)
+    optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay = 0.1)
 
     # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False

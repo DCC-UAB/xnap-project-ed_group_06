@@ -55,7 +55,7 @@ class LSTM(nn.Module):
         self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5) #bias = False) #dropout = 0.5)
 
         # ---------------------batchnormalisation---------------------------------------
-        #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
+        self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
@@ -64,6 +64,7 @@ class LSTM(nn.Module):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
+        
         lstm_out, hidden = self.lstm(input, h)
         logits = self.linear(lstm_out[-1])              # equivalent to return_sequences=False from Keras
         genre_scores = F.log_softmax(logits, dim=1)
@@ -132,7 +133,7 @@ def main():
     loss_function = nn.NLLLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax #nn.CrossEntropyLoss()
 
     #----------------------------------------------------------------------------------
-    optimizer = optim.Adam(model.parameters(), lr=0.001) #weight_decay = 0.1
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01) #weight_decay = 0.01
 
     # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False
@@ -192,9 +193,11 @@ def main():
                 train_X[i * batch_size: (i + 1) * batch_size, ],
                 train_Y[i * batch_size: (i + 1) * batch_size, ],
             )
+            #print(X_local_minibatch.size())
             # Reshape input & targets to "match" what the loss_function wants
             X_local_minibatch = X_local_minibatch.permute(1, 0, 2)
-
+            #print(X_local_minibatch.size())
+            #exit()
             # NLLLoss does not expect a one-hot encoded vector as the target, but class indices
             y_local_minibatch = torch.max(y_local_minibatch, 1)[1]
 

@@ -12,8 +12,6 @@ class GenreFeatureData:
     hop_length = None
     genre_list = [
         "classical",
-        "country",
-        "disco",
         "hiphop",
         "jazz",
         "metal",
@@ -100,7 +98,7 @@ class GenreFeatureData:
 
     def precompute_min_timeseries_len(self):
         for file in self.all_files_list:
-            print("Loading " + str(file))
+            # print("Loading " + str(file))
             y, sr = librosa.load(file)
             self.timeseries_length_list.append(math.ceil(len(y) / self.hop_length))
 

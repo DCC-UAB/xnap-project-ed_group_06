@@ -5,7 +5,7 @@ import itertools
 import IPython.display as ipd
 import matplotlib.pyplot as plt
 import soundfile as sf
-
+import os
 
 def load_audio_file(file_path):
     input_length = 16000
@@ -31,57 +31,95 @@ def plot_time_series(data,name):
     plt.show()
     
 
-original_audio = "./gtzan/_train/classical.00030.au"
+# original_audio = "./gtzan/_train/classical.00030.au"
 
-#careguem àudio
-au = load_audio_file_no_limit(original_audio)
-rate = 0.75 #velocitat àudio
+# #careguem àudio
+# au = load_audio_file_no_limit(original_audio)
+# rate = 0.75 #velocitat àudio
 
-#plot àudio original
-plot_time_series(au, 'original')
+# #plot àudio original
+# plot_time_series(au, 'original')
 
-#data augmentation àudio --> soroll
-augmented_audio = librosa.effects.time_stretch(au, rate = rate)
-augmented_audio = augmented_audio[:661794]
+# #data augmentation àudio --> soroll
+# augmented_audio = librosa.effects.time_stretch(au, rate = rate)
+# augmented_audio = augmented_audio[:661794]
 
-#plot àudio soroll
-plot_time_series(augmented_audio, 'time')
+# #plot àudio soroll
+# plot_time_series(augmented_audio, 'time')
 
-signal_rate = 22050  # Tasa de muestreo de audio
-print(original_audio)
+# signal_rate = 22050  # Tasa de muestreo de audio
+# print(original_audio)
 
-#path nou àudio
-original_audio = original_audio.split('/')[-1].split('.')
-output_file = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_time.'+str(original_audio[2])
-print(output_file)
+# #path nou àudio
+# original_audio = original_audio.split('/')[-1].split('.')
+# output_file = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_time.'+str(original_audio[2])
+# print(output_file)
 
-#es carrega nou àudio
-sf.write(output_file, augmented_audio, signal_rate)
+# #es carrega nou àudio
+# sf.write(output_file, augmented_audio, signal_rate)
 
 #-----------------------NOISE-----------------------------
-wn = np.random.randn(len(au))
-augmented_audio2 = au + 0.0075*wn
+# wn = np.random.randn(len(au))
+# augmented_audio2 = au + 0.0075*wn
 
-#plot àudio noise
-plot_time_series(augmented_audio2, 'noise')
+# #plot àudio noise
+# plot_time_series(augmented_audio2, 'noise')
 
-#path nou àudio
-output_file2 = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_noise.'+str(original_audio[2])
-print(output_file2)
+# #path nou àudio
+# output_file2 = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_noise.'+str(original_audio[2])
+# print(output_file2)
 
-#es carrega nou àudio
-sf.write(output_file, augmented_audio2, signal_rate)
+# #es carrega nou àudio
+# sf.write(output_file, augmented_audio2, signal_rate)
 
 #------------------------shift-row-------------------------
-audio_roll = np.roll(au, 100000)
-plot_time_series(audio_roll, 'roll')
-output_file3 = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_roll.'+str(original_audio[2])
-print(output_file3)
-sf.write(output_file, audio_roll, signal_rate)
+# audio_roll = np.roll(au, 100000)
+# plot_time_series(audio_roll, 'roll')
+# output_file3 = './gtzan/_train/'+str(original_audio[0])+'.'+str(original_audio[1])+'_roll.'+str(original_audio[2])
+# print(output_file3)
+# sf.write(output_file, audio_roll, signal_rate)
 
 
+archivos = os.listdir("./gtzan/_train/") 
 
+for file_name in archivos:
+    #careguem àudio
+    au = load_audio_file_no_limit(file_name)
+    rate = 0.75 #velocitat àudio
+    
+    
+    
+    #data augmentation àudio --> soroll
+    augmented_audio = librosa.effects.time_stretch(au, rate = rate)
+    augmented_audio = augmented_audio[:661794]
+    
+    
+    signal_rate = 22050  # Tasa de muestreo de audio
+    
+    
+    #path nou àudio
+    file_name = file_name.split('/')[-1].split('.')
+    output_file = './gtzan/_train/'+str(file_name[0])+'.'+str(file_name[1])+'_time.'+str(file_name[2])
+    
+    
+    #es carrega nou àudio
+    sf.write(output_file, augmented_audio, signal_rate)
+    
+    
+    wn = np.random.randn(len(au))
+    augmented_audio2 = au + 0.0075*wn
 
+    #plot àudio noise
+    
+    #path nou àudio
+    output_file2 = './gtzan/_train/'+str(file_name[0])+'.'+str(file_name[1])+'_noise.'+str(file_name[2])
+
+    #es carrega nou àudio
+    sf.write(output_file, augmented_audio2, signal_rate)
+    
+    
+    
+    
 
 
 
