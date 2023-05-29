@@ -35,7 +35,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layers
-        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5) #dropout = 0.5
+        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.3, bias = True) #dropout = 0.5
 
         # ---------------------batchnormalisation---------------------------------------
         self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -117,6 +117,8 @@ def main():
 
     #----------------------------------------------------------------------------------
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01) #weight_decay = 0.1
+    #defineix com decau el lr
+    #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.01, max_lr=0.1, cycle_momentum= False)
 
     # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False
@@ -138,6 +140,31 @@ def main():
     train_loss_list, train_accuracy_list = [], []
 
     print("Training ...")
+    for name, w in model.named_parameters():
+        if 'lstm' in name:
+            if 'weight_ih' in name:
+                nn.init.xavier_uniform_(w.data)
+
+            elif 'weight_hh' in name:
+                nn.init.orthogonal_(w.data)
+
+            elif 'bias_ih' in name:
+                nn.init.zeros_(w.data) 
+
+            elif 'bias_hh' in name:
+                nn.init.zeros_(w.data) 
+
+        elif 'linear' in name:
+            if 'weight' in name:
+                nn.init.xavier_uniform_(w.data)
+
+            elif 'bias' in name:
+                nn.init.zeros_(w.data)     
+    
+    
+    
+    
+    
 
     #Inicialització random i normalitzada
     # for name, w in model.named_parameters():
@@ -199,6 +226,7 @@ def main():
             loss = loss_function(y_pred, y_local_minibatch)  # compute loss
             loss.backward()  # backward pass
             optimizer.step()  # parameter update
+            #scheduler.step()
 
             train_running_loss += loss.detach().item()  # unpacks the tensor into a scalar value
             train_acc += model.get_accuracy(y_pred, y_local_minibatch)
