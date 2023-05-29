@@ -84,38 +84,30 @@ archivos = os.listdir("./gtzan/_train/")
 
 for file_name in archivos:
     #careguem àudio
-    au = load_audio_file_no_limit(file_name)
-    rate = 0.75 #velocitat àudio
+    
+    au = load_audio_file_no_limit('./gtzan/_train/'+file_name)
+   
     
     
     
-    #data augmentation àudio --> soroll
-    augmented_audio = librosa.effects.time_stretch(au, rate = rate)
-    augmented_audio = augmented_audio[:661794]
+    
     
     
     signal_rate = 22050  # Tasa de muestreo de audio
     
     
-    #path nou àudio
-    file_name = file_name.split('/')[-1].split('.')
-    output_file = './gtzan/_train/'+str(file_name[0])+'.'+str(file_name[1])+'_time.'+str(file_name[2])
-    
-    
-    #es carrega nou àudio
-    sf.write(output_file, augmented_audio, signal_rate)
-    
     
     wn = np.random.randn(len(au))
     augmented_audio2 = au + 0.0075*wn
 
+    file_name = file_name.split('/')[-1].split('.')
     #plot àudio noise
     
     #path nou àudio
     output_file2 = './gtzan/_train/'+str(file_name[0])+'.'+str(file_name[1])+'_noise.'+str(file_name[2])
 
     #es carrega nou àudio
-    sf.write(output_file, augmented_audio2, signal_rate)
+    sf.write(output_file2, augmented_audio2, signal_rate)
     
     
     
