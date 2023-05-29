@@ -12,8 +12,6 @@ class GenreFeatureData:
     hop_length = None
     genre_list = [
         "classical",
-        "country",
-        "disco",
         "hiphop",
         "jazz",
         "metal",
@@ -51,13 +49,13 @@ class GenreFeatureData:
         self.all_files_list.extend(self.testfiles_list)
 
         # compute minimum timeseries length, slow to compute, caching pre-computed value of 1290
-        # self.precompute_min_timeseries_len()
-        # print("min(self.timeseries_length_list) ==" + str(min(self.timeseries_length_list)))
-        # self.timeseries_length = min(self.timeseries_length_list)
+        self.precompute_min_timeseries_len()
+        print("min(self.timeseries_length_list) ==" + str(min(self.timeseries_length_list)))
+        self.timeseries_length = min(self.timeseries_length_list)
 
-        self.timeseries_length = (
-            128
-        )   # sequence length == 128, default fftsize == 2048 & hop == 512 @ SR of 22050
+        # self.timeseries_length = (
+        #     128
+        # )   # sequence length == 128, default fftsize == 2048 & hop == 512 @ SR of 22050
         #  equals 128 overlapped windows that cover approx ~3.065 seconds of audio, which is a bit small!
 
     def load_preprocess_data(self):
@@ -100,7 +98,7 @@ class GenreFeatureData:
 
     def precompute_min_timeseries_len(self):
         for file in self.all_files_list:
-            print("Loading " + str(file))
+            # print("Loading " + str(file))
             y, sr = librosa.load(file)
             self.timeseries_length_list.append(math.ceil(len(y) / self.hop_length))
 
