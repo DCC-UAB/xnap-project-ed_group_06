@@ -31,45 +31,6 @@ from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-
-class StackedAutoencoder(nn.Module):
-    def __init__(self, input_dim, hidden_dims):
-        super(StackedAutoencoder, self).__init__()
-        
-        self.encoders = nn.ModuleList()
-        self.decoders = nn.ModuleList()
-        
-        # Construir los encoders y decoders
-        for i in range(len(hidden_dims) - 1):
-            encoder = nn.Linear(hidden_dims[i], hidden_dims[i+1])
-            decoder = nn.Linear(hidden_dims[i+1], hidden_dims[i])
-            
-            self.encoders.append(encoder)
-            self.decoders.append(decoder)
-        
-    def forward(self, x):
-        encoded = x
-        
-        # Codificar
-        print("encoder")
-        for encoder in self.encoders:
-            print(encoded.size())
-            encoded = F.relu(encoder(encoded))
-        
-        decoded = encoded
-        
-        self.decoders = nn.ModuleList(reversed(self.decoders))
-        
-        # Decodificar
-        print("decoder")
-        for decoder in self.decoders:
-            print(decoded.size())
-            decoded = F.relu(decoder(decoded))
-        
-        return decoded
-
-
-
 # class definition
 class LSTM(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size, output_dim=8, num_layers=2):
@@ -85,20 +46,38 @@ class LSTM(nn.Module):
         # batchnormalisation
         self.batch = nn.BatchNorm1d(num_features=self.hidden_dim)
 
-        input_size = input_dim
-        hidden_sizes = [input_dim, hidden_dim, 64, 32]  # Tamaños de las capas ocultas
-
-        # Crear el Stacked Autoencoder
-        self.stacked_autoencoder = StackedAutoencoder(input_size, hidden_sizes)
-
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
+        self.encoder_mfcc = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=(3, 3), padding="same"),
+            nn.ReLU(),
+            nn.Conv2d(64, 32, kernel_size=(3, 3), padding="same"),
+            nn.ReLU()
+        )
+
+        self.encoder_chroma = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=5, padding="same"),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=(1, 1), stride=(1, 1)),
+            nn.Conv2d(64, 32, kernel_size=5, padding="same"),
+            nn.ReLU()
+        )
+
     def forward(self, input, h, c):
-        out = self.stacked_autoencoder(input)
-        print("forward")
-        print(out.size())
-        out, (h, c) = self.lstm(out, (h, c))
+        input1 = torch.zeros([32, input.size()[1], input.size()[2]])
+        mfcc = input[:, :, 0:13]
+        mfcc = self.encoder_mfcc(mfcc)
+        input1[:, :, 0:13] = mfcc
+        chroma = input[:, :, 14:26]
+        chroma = self.encoder_chroma(chroma)
+        input1[:, :, 14:26] = chroma
+        spectral_contrast = input[:, :, 27:33]
+        spectral_contrast = self.encoder_chroma(spectral_contrast)
+        input1[:, :, 27:33] = spectral_contrast
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        input1 = input1.to(device)
+        out, (h, c) = self.lstm(input1, (h, c))
         out = self.batch(out[-1])
         out = self.linear(out)
         return out, h, c
