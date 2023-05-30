@@ -154,6 +154,31 @@ def main():
         
     #     if "bias" in name:
     #         nn.init.zeros_(w.data) 
+    
+    
+    
+    for name, w in model.named_parameters():
+        if 'lstm' in name:
+            if 'weight_ih' in name:
+                nn.init.xavier_uniform_(w.data)
+
+            elif 'weight_hh' in name:
+                nn.init.xavier_uniform_(w.data)
+
+            elif 'bias_ih' in name:
+                nn.init.zeros_(w.data) 
+
+            elif 'bias_hh' in name:
+                nn.init.zeros_(w.data) 
+
+        elif 'linear' in name:
+            if 'weight' in name:
+                nn.init.xavier_uniform_(w.data)
+
+            elif 'bias' in name:
+                nn.init.zeros_(w.data) 
+    
+    
 
     for epoch in range(num_epochs):
 
