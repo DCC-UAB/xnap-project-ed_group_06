@@ -35,7 +35,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layers
-        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.3, bias = True) #dropout = 0.5
+        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5, bias = True) #dropout = 0.5
 
         # ---------------------batchnormalisation---------------------------------------
         self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -140,26 +140,7 @@ def main():
     train_loss_list, train_accuracy_list = [], []
 
     print("Training ...")
-    for name, w in model.named_parameters():
-        if 'lstm' in name:
-            if 'weight_ih' in name:
-                nn.init.xavier_uniform_(w.data)
-
-            elif 'weight_hh' in name:
-                nn.init.orthogonal_(w.data)
-
-            elif 'bias_ih' in name:
-                nn.init.zeros_(w.data) 
-
-            elif 'bias_hh' in name:
-                nn.init.zeros_(w.data) 
-
-        elif 'linear' in name:
-            if 'weight' in name:
-                nn.init.xavier_uniform_(w.data)
-
-            elif 'bias' in name:
-                nn.init.zeros_(w.data)     
+        
     
     
     
