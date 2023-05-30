@@ -53,11 +53,11 @@ class LSTM(nn.Module):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        conv = self.conv1(input)
-        pool = self.maxpool(conv)
-        batch_size, num_channels, seq_length = pool.size()
-        flattened_output = pool.view(batch_size, -1, seq_length)
-        out, (h, c) = self.lstm(flattened_output, (h, c))
+        #conv = self.conv1(input)
+        #pool = self.maxpool(conv)
+        #batch_size, num_channels, seq_length = pool.size()
+        #flattened_output = pool.view(batch_size, -1, seq_length)
+        out, (h, c) = self.lstm(input, (h, c))
         out = self.batch(out[-1])
         out = self.linear(out)
         return out, h, c
@@ -111,7 +111,7 @@ def main():
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
     batch_size = 35  # num of training examples per minibatch
-    num_epochs = 400
+    num_epochs = 401
 
     # Define model
     print("Build LSTM RNN model ...")
@@ -121,7 +121,7 @@ def main():
 
     loss_function = nn.CrossEntropyLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax
 
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.1)
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01)
 
     # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False
@@ -316,7 +316,7 @@ def main():
     disp.plot(xticks_rotation="vertical")
     plt.savefig("ConfPlot.png")
     plt.show()
-
+    plt.clf()
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
     plt.plot(epoch_list, train_loss_list, color = "blue", label = "Train loss")
