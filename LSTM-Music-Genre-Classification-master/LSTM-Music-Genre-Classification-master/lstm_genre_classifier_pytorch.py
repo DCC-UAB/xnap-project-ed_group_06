@@ -41,40 +41,70 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias=False, dropout=0.5)
+        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False) #dropout = 0.5)
 
-        # batchnormalisation
-        self.batch = nn.BatchNorm1d(num_features=self.hidden_dim)
+        # ---------------------batchnormalisation---------------------------------------
+        self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
         self.encoder_mfcc = nn.Sequential(
-            nn.Conv2d(128, 64, kernel_size=(3, 3), padding="same"),
+            nn.Conv2d(128, 128, kernel_size=5, padding="same"),
             nn.ReLU(),
-            nn.Conv2d(64, 32, kernel_size=(3, 3), padding="same"),
-            nn.ReLU()
+            nn.Dropout(0.5)
         )
 
         self.encoder_chroma = nn.Sequential(
-            nn.Conv2d(128, 64, kernel_size=5, padding="same"),
+            nn.Conv2d(128, 64, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.AvgPool2d(kernel_size=(1, 1), stride=(1, 1)),
-            nn.Conv2d(64, 32, kernel_size=5, padding="same"),
-            nn.ReLU()
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 32, kernel_size=5, padding=2),
+            nn.ReLU(), 
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(32, 16, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(16, 32, kernel_size=5, padding=2),
+            nn.ReLU(), 
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 128, kernel_size=5, padding=2),
+            nn.ReLU(), 
+            nn.Dropout(0.5)
+        )
+
+        self.encoder_spectral = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 32, kernel_size=5, padding=2),
+            nn.ReLU(), 
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 128, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Dropout(0.5)
         )
 
     def forward(self, input, h, c):
-        input1 = torch.zeros([32, input.size()[1], input.size()[2]])
+        # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
+        # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
+        # but we just need the output of the last step of the sequence, aka lstm_out[-1]
+        input1 = torch.clone(input)
         mfcc = input[:, :, 0:13]
         mfcc = self.encoder_mfcc(mfcc)
         input1[:, :, 0:13] = mfcc
         chroma = input[:, :, 14:26]
         chroma = self.encoder_chroma(chroma)
         input1[:, :, 14:26] = chroma
-        spectral_contrast = input[:, :, 27:33]
-        spectral_contrast = self.encoder_chroma(spectral_contrast)
-        input1[:, :, 27:33] = spectral_contrast
+        spectral_contrast = input[:, :, 26:33]
+        spectral_contrast = self.encoder_spectral(spectral_contrast)
+        input1[:, :, 26:33] = spectral_contrast
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         input1 = input1.to(device)
         out, (h, c) = self.lstm(input1, (h, c))

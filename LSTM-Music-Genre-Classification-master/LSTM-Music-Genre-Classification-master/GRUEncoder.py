@@ -52,7 +52,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5, bias = False) #dropout = 0.5)
+        self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
 
         # ---------------------batchnormalisation---------------------------------------
         self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -61,27 +61,47 @@ class LSTM(nn.Module):
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
         self.encoder_mfcc = nn.Sequential(
-            nn.Conv2d(128, 64, kernel_size=(3, 3), padding="same"),
+            nn.Conv2d(128, 64, kernel_size=5, padding="same"),
             nn.ReLU(),
-            nn.Conv2d(64, 32, kernel_size=(3, 3), padding="same"),
+            nn.Conv2d(64, 32, kernel_size=5, padding="same"),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=(3, 3), padding="same"),
+            nn.Conv2d(32, 64, kernel_size=5, padding="same"),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=(3, 3), padding="same"),
+            nn.Conv2d(64, 128, kernel_size=5, padding="same"),
             nn.ReLU()
         )
 
         self.encoder_chroma = nn.Sequential(
-            nn.Conv2d(128, 64, kernel_size=5, padding="same"),
+            nn.Conv2d(128, 64, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.AvgPool2d(kernel_size=(1, 1), stride=(1, 1)),
-            nn.Conv2d(64, 32, kernel_size=5, padding="same"),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 32, kernel_size=5, padding=2),
             nn.ReLU(), 
-            nn.AvgPool2d(kernel_size=(1, 1), stride=(1, 1)),
-            nn.Conv2d(32, 64, kernel_size=5, padding="same"),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(32, 16, kernel_size=5, padding=2),
             nn.ReLU(),
-            nn.AvgPool2d(kernel_size=(1, 1), stride=(1, 1)),
-            nn.Conv2d(64, 128, kernel_size=5, padding="same"),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(16, 32, kernel_size=5, padding=2),
+            nn.ReLU(), 
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 128, kernel_size=5, padding=2),
+            nn.ReLU()
+        )
+
+        self.encoder_spectral = nn.Sequential(
+            nn.Conv2d(128, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 32, kernel_size=5, padding=2),
+            nn.ReLU(), 
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(32, 64, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
+            nn.Conv2d(64, 128, kernel_size=5, padding=2),
             nn.ReLU()
         )
 
@@ -89,23 +109,21 @@ class LSTM(nn.Module):
         # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        print(input.grad) 
         input1 = torch.clone(input)
-        print(input1.grad) 
-        mfcc = input[:, :, 0:13]
-        mfcc = self.encoder_mfcc(mfcc)
-        input1[:, :, 0:13] = mfcc
+        # mfcc = input[:, :, 0:13]
+        # mfcc = self.encoder_mfcc(mfcc)
+        # input1[:, :, 0:13] = mfcc
         chroma = input[:, :, 14:26]
         chroma = self.encoder_chroma(chroma)
         input1[:, :, 14:26] = chroma
         spectral_contrast = input[:, :, 26:33]
-        spectral_contrast = self.encoder_chroma(spectral_contrast)
+        spectral_contrast = self.encoder_spectral(spectral_contrast)
         input1[:, :, 26:33] = spectral_contrast
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         input1 = input1.to(device)
         lstm_out, hidden = self.lstm(input1, h)
-        print(lstm_out.size())
-        logits = self.linear(lstm_out[-1])              # equivalent to return_sequences=False from Keras
+        # logits = self.batch(lstm_out[-1])              # equivalent to return_sequences=False from Keras
+        logits = self.linear(lstm_out[-1])
         genre_scores = F.log_softmax(logits, dim=1)
         return genre_scores, hidden
     
