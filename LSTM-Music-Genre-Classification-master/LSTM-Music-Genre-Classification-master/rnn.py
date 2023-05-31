@@ -35,10 +35,10 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layers
-        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5, bias = True) #dropout = 0.5
+        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0) #dropout = 0.5dropout = 0.5, bias = True
 
         # ---------------------batchnormalisation---------------------------------------
-        self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
+        #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
@@ -116,7 +116,7 @@ def main():
     loss_function = nn.NLLLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax #nn.CrossEntropyLoss()
 
     #----------------------------------------------------------------------------------
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01) #weight_decay = 0.1
+    optimizer = optim.Adam(model.parameters(), lr=0.001) #, weight_decay = 0.01weight_decay = 0.1
     #defineix com decau el lr
     #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.01, max_lr=0.1, cycle_momentum= False)
 
@@ -157,26 +157,26 @@ def main():
     
     
     
-    for name, w in model.named_parameters():
-        if 'lstm' in name:
-            if 'weight_ih' in name:
-                nn.init.xavier_uniform_(w.data)
+    # for name, w in model.named_parameters():
+    #     if 'lstm' in name:
+    #         if 'weight_ih' in name:
+    #             nn.init.xavier_uniform_(w.data)
 
-            elif 'weight_hh' in name:
-                nn.init.xavier_uniform_(w.data)
+    #         elif 'weight_hh' in name:
+    #             nn.init.xavier_uniform_(w.data)
 
-            elif 'bias_ih' in name:
-                nn.init.zeros_(w.data) 
+    #         elif 'bias_ih' in name:
+    #             nn.init.zeros_(w.data) 
 
-            elif 'bias_hh' in name:
-                nn.init.zeros_(w.data) 
+    #         elif 'bias_hh' in name:
+    #             nn.init.zeros_(w.data) 
 
-        elif 'linear' in name:
-            if 'weight' in name:
-                nn.init.xavier_uniform_(w.data)
+    #     elif 'linear' in name:
+    #         if 'weight' in name:
+    #             nn.init.xavier_uniform_(w.data)
 
-            elif 'bias' in name:
-                nn.init.zeros_(w.data) 
+    #         elif 'bias' in name:
+    #             nn.init.zeros_(w.data) 
     
     
 
@@ -298,7 +298,7 @@ def main():
             val_accuracy_list.append(val_acc / num_dev_batches)
             val_loss_list.append(val_running_loss / num_dev_batches)
             train_accuracy_list.append(train_acc / num_batches)
-            train_loss_list.append(train_running_loss / num_dev_batches)
+            train_loss_list.append(train_running_loss / num_batches)
      
     from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 

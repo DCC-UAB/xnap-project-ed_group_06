@@ -52,7 +52,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
+        self.lstm = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers, bias = True, dropout = 0.5)
 
         # ---------------------batchnormalisation---------------------------------------
         self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
@@ -177,7 +177,7 @@ def main():
     print("Test X shape: " + str(genre_features.test_X.shape))
     print("Test Y shape: " + str(genre_features.test_Y.shape))
 
-    batch_size = 35  # num of training examples per minibatch
+    batch_size = 75  # num of training examples per minibatch
     num_epochs = 401
 
     # Define model

@@ -37,7 +37,7 @@ class LSTM(nn.Module):
         self.num_layers = num_layers
 
         # setup LSTM layer
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
+        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = True, dropout = 0.5)
 
         # batchnormalisation
         self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
