@@ -10,8 +10,11 @@ Hi ha una implementació principal en pytorch en la gran majoria de models, per�
 Característiques extretes dels arxius .au per poder entrenar el model:
 
 [MFCC] (https://en.wikipedia.org/wiki/Mel-frequency_cepstrum)
+
 [Spectral Centroid] (https://wikipedia.org/Wiki/Spectral_centroid)
+
 [Chroma] (https://laborsa.ee.columbia.edu/matlab/chroma-ansyn/)
+
 [Spectral contrast] (https://ieeexplore.ieee.org.document/1035731/)
 
 Aquestes característiques s’extreuen amb l'arxiu GenreFeatureData.py amb la llibreria de python librosa.
