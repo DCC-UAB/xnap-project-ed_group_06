@@ -54,6 +54,9 @@ Per tal de poder executar els diferents models implementats:
 # Models
 Tots els models tenen com  a configuració determinada, 400 èpoques d’execució, batch size de 35, batch normalization, optimizer ADAM, lr de 0.001, weight decay, dropout i inicialització de pesos. Menys el lstm_genre_classifier_pytorch_lightning.py i lstm_genre_classifier_keras.py, que són arxius per desenvolupar el projecte amb altres llibreries que no s’han arribat a utilitzar. 
 
+# Gràfiques
+Quan es realitza l'execució per cada model es generen 3 imatges: una per la loss, l'altre per l'accuracy i l'últim per la confusion matrix.
+
 # Accuracy
 El millor accuracy obtingut ha estat del CNN + GRU, implementat a l’arxiu GRUEncoder.py, amb els següents resultats:
 
