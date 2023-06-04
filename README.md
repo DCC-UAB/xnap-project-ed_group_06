@@ -55,8 +55,11 @@ Tots els models tenen com  a configuració determinada, 400 èpoques d’execuci
 El millor accuracy obtingut ha estat del CNN + GRU, implementat a l’arxiu GRUEncoder.py, amb els següents resultats:
 
 Loss train --> 0.3296
+
 Loss val --> 1.1047
+
 Train Accuracy --> 89.52 
+
 Val Accuracy --> 70.48
 
 
