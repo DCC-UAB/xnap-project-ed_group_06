@@ -67,5 +67,6 @@ Val Accuracy --> 70.48
 Adrià Baldevell Comajuan (1604543@uab.cat), Adán Jiménez López (1606338@uab.cat) i Joan Paz Garcia (1598851@uab.cat)
 
 Xarxes Neuronals i Aprenentatge Profund
+
 Grau d'Enginyeria de Dades, 
 UAB, 2023
