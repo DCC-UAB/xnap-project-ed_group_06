@@ -4,20 +4,20 @@ Classificació d’arxius .au situats a la carpeta gtzan, ja dividits per train,
 
 Hi ha una implementació principal en pytorch en la gran majoria de models, però també hi ha una implementació en keras o pytorch lighting poc desenvolupada, sent les mateixes que hi havien a l’starting point.
 
-Ús de models RNN per fer aquesta classificació: RNN simple, GRU, LSTM, CNN + LSTM i CNN + GRU.
+Ús de models RNN per fer aquesta classificació: RNN simple (rnn.py), GRU (GRU.py), LSTM (LSTM.py), CNN + LSTM (LSTMEncoder.py) i CNN + GRU (GRUEncoder.py).
 
 # Data
 Els diferents àudios es troben al directori LSTM-Music-Genre-Classification-master/LSTM-Music-Genre-Classification-master/gtzan, on dintre hi ha 3 carpetes, separant train (420 àudios), validation (120 àudios) i test (60 àudios).
 
 Característiques extretes dels arxius .au per poder entrenar el model:
 
-[MFCC] (https://en.wikipedia.org/wiki/Mel-frequency_cepstrum)
+- [MFCC] (https://en.wikipedia.org/wiki/Mel-frequency_cepstrum)
 
-[Spectral Centroid] (https://wikipedia.org/Wiki/Spectral_centroid)
+- [Spectral Centroid] (https://wikipedia.org/Wiki/Spectral_centroid)
 
-[Chroma] (https://laborsa.ee.columbia.edu/matlab/chroma-ansyn/)
+- [Chroma] (https://laborsa.ee.columbia.edu/matlab/chroma-ansyn/)
 
-[Spectral contrast] (https://ieeexplore.ieee.org.document/1035731/)
+- [Spectral contrast] (https://ieeexplore.ieee.org.document/1035731/)
 
 Aquestes característiques s’extreuen amb l'arxiu GenreFeatureData.py amb la llibreria de python librosa.
 
