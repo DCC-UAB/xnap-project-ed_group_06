@@ -109,18 +109,13 @@ class GRU(nn.Module):
         # gru step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
         # Note: gru_out contains outputs for every step of the sequence we are looping over (for BPTT)
         # but we just need the output of the last step of the sequence, aka gru_out[-1]
-        input1 = torch.clone(input)
-        # mfcc = input[:, :, 0:13]
-        # mfcc = self.encoder_mfcc(mfcc)
-        # input1[:, :, 0:13] = mfcc
-        chroma = input[:, :, 14:26]
-        chroma = self.encoder_chroma(chroma)
-        input1[:, :, 14:26] = chroma
-        spectral_contrast = input[:, :, 26:33]
-        spectral_contrast = self.encoder_spectral(spectral_contrast)
-        input1[:, :, 26:33] = spectral_contrast
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        input1 = input1.to(device)
+        input1 = torch.zeros([input.size()[0], input.size()[1], input.size()[2]], device = "cuda:0")
+        # x = self.encoder_mfcc(input[:, :, :13])
+        y = self.encoder_chroma(input[:, :, 14:26])
+        z = self.encoder_spectral(input[:, :, 26:33])
+        input1[:, :, 0:14] = input[:, :, 0:14]
+        input1[:, :, 14:26] = y
+        input1[:, :, 26:33] = z
         gru_out, hidden = self.gru(input1, h)
         logits = self.batch(gru_out[-1])              # equivalent to return_sequences=False from Keras
         logits = self.linear(logits)
