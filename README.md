@@ -7,6 +7,8 @@ Hi ha una implementació principal en pytorch en la gran majoria de models, per�
 Ús de models RNN per fer aquesta classificació: RNN simple, GRU, LSTM, CNN + LSTM i CNN + GRU.
 
 # Data
+Els diferents àudios es troben al directori LSTM-Music-Genre-Classification-master/LSTM-Music-Genre-Classification-master/gtzan, on dintre hi ha 3 carpetes, separant train (420 àudios), validation (120 àudios) i test (60 àudios).
+
 Característiques extretes dels arxius .au per poder entrenar el model:
 
 [MFCC] (https://en.wikipedia.org/wiki/Mel-frequency_cepstrum)
