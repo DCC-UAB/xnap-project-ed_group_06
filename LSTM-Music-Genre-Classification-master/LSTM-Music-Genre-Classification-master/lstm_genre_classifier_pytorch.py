@@ -315,7 +315,7 @@ def main():
             val_accuracy_list.append(val_acc / num_dev_batches)
             val_loss_list.append(val_running_loss / num_dev_batches)
             train_accuracy_list.append(train_acc / num_batches)
-            train_loss_list.append(train_running_loss / num_dev_batches)
+            train_loss_list.append(train_running_loss / num_batches)
         
     from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 

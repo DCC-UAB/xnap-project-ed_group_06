@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-    PyTorch implementation of a simple 2-layer-deep GRU for genre classification of musical audio.
-    Feeding the GRU stack are spectral {centroid, contrast}, chromagram & MFCC features (33 total values)
+    PyTorch implementation of a simple 2-layer-deep LSTM for genre classification of musical audio.
+    Feeding the LSTM stack are spectral {centroid, contrast}, chromagram & MFCC features (33 total values)
 
     Question: Why is there a PyTorch implementation, when we already have Keras/Tensorflow?
     Answer:   So that we can learn more PyTorch and experiment with modulations on basic
@@ -26,115 +26,48 @@ from GenreFeatureData import (
     GenreFeatureData,
 )  # local python class with Audio feature extraction (librosa)
 
-# import sys
-# sys.executable = '/usr/bin/python3'
-
-# wandb.init(
-#     # set the wandb project where this run will be logged
-#     project="music_project",
-    
-#     # track hyperparameters and run metadata
-#     config={
-#     "learning_rate": 0.02,
-#     "architecture": "GRU",
-#     "dataset": "no_dataset",
-#     "epochs": 400,
-#     }
-# )
 
 # class definition
-class GRU(nn.Module):
+class LSTM(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size, output_dim=8, num_layers=2):
-        super(GRU, self).__init__()
+        super(LSTM, self).__init__()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
         self.num_layers = num_layers
 
-        # setup GRU layer
-        self.gru = nn.GRU(self.input_dim, self.hidden_dim, self.num_layers, bias = True, dropout = 0.5)
+        # setup LSTM layer
+        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers, bias = False, dropout = 0.5)
 
-        # ---------------------batchnormalisation---------------------------------------
+        # batchnormalisation
         self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
-        self.encoder_mfcc = nn.Sequential(
-            nn.Conv2d(128, 64, kernel_size=5, padding="same"),
-            nn.ReLU(),
-            nn.Conv2d(64, 32, kernel_size=5, padding="same"),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=5, padding="same"),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=5, padding="same"),
-            nn.ReLU()
-        )
+        self.conv1 = nn.Conv1d(in_channels=35, out_channels=32, kernel_size=3, padding = "same")
+        self.maxpool = nn.MaxPool1d(kernel_size=2)
 
-        self.encoder_chroma = nn.Sequential(
-            nn.Conv2d(128, 64, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(64, 32, kernel_size=5, padding=2),
-            nn.ReLU(), 
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(32, 16, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(16, 32, kernel_size=5, padding=2),
-            nn.ReLU(), 
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(32, 64, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(64, 128, kernel_size=5, padding=2),
-            nn.ReLU()
-        )
 
-        self.encoder_spectral = nn.Sequential(
-            nn.Conv2d(128, 64, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(64, 32, kernel_size=5, padding=2),
-            nn.ReLU(), 
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(32, 64, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.AvgPool2d(kernel_size=5, stride=1, padding=2),
-            nn.Conv2d(64, 128, kernel_size=5, padding=2),
-            nn.ReLU()
-        )
-
-    def forward(self, input, h):
-        # gru step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
-        # Note: gru_out contains outputs for every step of the sequence we are looping over (for BPTT)
-        # but we just need the output of the last step of the sequence, aka gru_out[-1]
-        input1 = torch.clone(input)
-        # mfcc = input[:, :, 0:13]
-        # mfcc = self.encoder_mfcc(mfcc)
-        # input1[:, :, 0:13] = mfcc
-        chroma = input[:, :, 14:26]
-        chroma = self.encoder_chroma(chroma)
-        input1[:, :, 14:26] = chroma
-        spectral_contrast = input[:, :, 26:33]
-        spectral_contrast = self.encoder_spectral(spectral_contrast)
-        input1[:, :, 26:33] = spectral_contrast
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        input1 = input1.to(device)
-        gru_out, hidden = self.gru(input1, h)
-        logits = self.batch(gru_out[-1])              # equivalent to return_sequences=False from Keras
-        logits = self.linear(logits)
-        genre_scores = F.log_softmax(logits, dim=1)
-        return genre_scores, hidden
+    def forward(self, input, h, c):
+        # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
+        # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
+        # but we just need the output of the last step of the sequence, aka lstm_out[-1]
+        #conv = self.conv1(input)
+        #pool = self.maxpool(conv)
+        #batch_size, num_channels, seq_length = pool.size()
+        #flattened_output = pool.view(batch_size, -1, seq_length)
+        out, (h, c) = self.lstm(input, (h, c))
+        out = self.batch(out[-1])
+        out = self.linear(out)
+        return out, h, c
     
-    #----afegit-----------------------------------------------------------------------
     def init_hidden(self, batch_size):
-        "Initialize the hidden state of the RNN to zeros"
-        return nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim)) #,nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim))
-    
-    
+        " Initialize the hidden state of the RNN to zeros"
+        return nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim)), nn.Parameter(torch.zeros(self.num_layers, batch_size, self.hidden_dim))
+
     def get_accuracy(self, logits, target):
-        """compute accuracy for training round"""
+        """ compute accuracy for training round """
         corrects = (
                 torch.max(logits, 1)[1].view(target.size()).data == target.data
         ).sum()
@@ -181,18 +114,16 @@ def main():
     num_epochs = 401
 
     # Define model
-    print("Build GRU model ...")
-    model = GRU(
+    print("Build LSTM RNN model ...")
+    model = LSTM(
         input_dim=33, hidden_dim=128, batch_size=batch_size, output_dim=8, num_layers=2
     )
-    
-    #------------------------------------------------------------------------------
-    loss_function = nn.NLLLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax #nn.CrossEntropyLoss()
 
-    #----------------------------------------------------------------------------------
-    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01) #weight_decay = 0.01
+    loss_function = nn.CrossEntropyLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax
 
-    # To keep GRU stateful between batches, you can set stateful = True, which is not suggested for training
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01)
+
+    # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False
 
     train_on_gpu = torch.cuda.is_available()
@@ -215,7 +146,7 @@ def main():
 
     #Inicialització random i normalitzada
     for name, w in model.named_parameters():
-        if 'gru' in name:
+        if 'lstm' in name:
             if 'weight_ih' in name:
                 nn.init.xavier_uniform_(w.data)
 
@@ -233,25 +164,19 @@ def main():
                 nn.init.xavier_uniform_(w.data)
 
             elif 'bias' in name:
-                nn.init.zeros_(w.data)  
+                nn.init.zeros_(w.data) 
+        
 
     for epoch in range(num_epochs):
 
         train_running_loss, train_acc = 0.0, 0.0
 
-        # Init hidden state - if you don't want a stateful GRU (between epochs)
-        
-        #-----------------------------------------2 hidden layers--------------------------------
-        #h_0, c_0 = model.init_hidden(batch_size)
-        hidden_state = model.init_hidden(batch_size)
-
+        # Init hidden state - if you don't want a stateful LSTM (between epochs)
+        h_0, c_0 = model.init_hidden(batch_size)
 
         for i in range(num_batches):
-            #-------------------------------------------------
-            #h_0, c_0 = h_0.to(device), c_0.to(device)
-            hidden_state = hidden_state.to(device)
-             
-            
+            h_0, c_0 = h_0.to(device), c_0.to(device)
+
             # zero out gradient, so they don't accumulate btw batches
             model.zero_grad()
 
@@ -264,32 +189,18 @@ def main():
                 train_X[i * batch_size: (i + 1) * batch_size, ],
                 train_Y[i * batch_size: (i + 1) * batch_size, ],
             )
-            #print(X_local_minibatch.size())
             # Reshape input & targets to "match" what the loss_function wants
             X_local_minibatch = X_local_minibatch.permute(1, 0, 2)
-            #print(X_local_minibatch.size())
-            #exit()
+
             # NLLLoss does not expect a one-hot encoded vector as the target, but class indices
             y_local_minibatch = torch.max(y_local_minibatch, 1)[1]
 
             X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
             
-            #----------------------------------------------------------------------
-            #y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)  # forward pass
-            y_pred, hidden_state = model(X_local_minibatch, hidden_state)  # forward pass
-
+            y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)  # forward pass
 
             # Stateful = False for training. Do we go Stateful = True during inference/prediction time?
-            #----------------------------------------------------------------
-            #h_0.detach_(), c_0.detach_()
-            hidden_state.detach_()
-            # if not stateful:
-            #     hidden_state = None
-            # else:
-                
-            #     h_0, c_0 = hidden_state
-            #     h_0.detach_(), c_0.detach_()
-            #     hidden_state = (h_0, c_0)
+            h_0.detach_(), c_0.detach_()
 
             loss = loss_function(y_pred, y_local_minibatch)  # compute loss
             loss.backward()  # backward pass
@@ -310,15 +221,12 @@ def main():
             # Compute validation loss, accuracy. Use torch.no_grad() & model.eval()
             with torch.no_grad():
                 model.eval()
-                #------------------------------------------------
-                #h_0, c_0 = model.init_hidden(batch_size)     
-                hidden_state = model.init_hidden(batch_size)
 
+                h_0, c_0 = model.init_hidden(batch_size)                
+                
                 for i in range(num_dev_batches):
-                    #------------------------------------------
-                    #h_0, c_0 = h_0.to(device), c_0.to(device)
-                    hidden_state = hidden_state.to(device)
 
+                    h_0, c_0 = h_0.to(device), c_0.to(device)
 
                     X_local_validation_minibatch, y_local_validation_minibatch = (
                         dev_X[i * batch_size: (i + 1) * batch_size, ],
@@ -330,10 +238,7 @@ def main():
 
                     X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
 
-                    #---------------------------------------
-                    #y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
-                    y_pred, hidden_state = model(X_local_minibatch, hidden_state)
-
+                    y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
                     # if not stateful:
                     #     hidden_state = None
 
@@ -355,9 +260,6 @@ def main():
                         val_acc / num_dev_batches,
                     )
                 )
-
-            # wandb.log({"acc_train": train_acc / num_batches, "loss_train": train_running_loss / num_batches})
-            # wandb.log({"acc_validation": val_acc / num_dev_batches, "loss_validation": val_running_loss / num_dev_batches})
             
             epoch_list.append(epoch)
             val_accuracy_list.append(val_acc / num_dev_batches)
@@ -365,8 +267,6 @@ def main():
             train_accuracy_list.append(train_acc / num_batches)
             train_loss_list.append(train_running_loss / num_batches)
         
-
-
     from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
     @torch.no_grad()
@@ -376,11 +276,11 @@ def main():
 
         model.eval()
 
-        h_0  = model.init_hidden(batch_size)                
+        h_0, c_0 = model.init_hidden(batch_size)                
         
         for i in range(num_dev_batches):
 
-            h_0 = h_0.to(device)
+            h_0, c_0 = h_0.to(device), c_0.to(device)
 
             X_local_validation_minibatch, y_local_validation_minibatch = (
                 dev_X[i * batch_size: (i + 1) * batch_size, ],
@@ -392,18 +292,17 @@ def main():
 
             X_local_minibatch, y_local_minibatch = X_local_minibatch.to(device), y_local_minibatch.to(device)
 
-            y_pred, h_0 = model(X_local_minibatch, h_0)
+            y_pred, h_0, c_0 = model(X_local_minibatch, h_0, c_0)
                             
             pred = y_pred.data.max(1, keepdim=True)[1].cpu().numpy().tolist()
             prediccions += pred
             
             y += y_local_minibatch.cpu().numpy().tolist()
 
-        return prediccions, y 
-     
-        
+        return prediccions, y
 
     prediccions, y = evaluate(model, dev_X, dev_Y)
+
 
     cm = confusion_matrix(y, prediccions)
     disp = ConfusionMatrixDisplay(confusion_matrix = cm, display_labels = [
@@ -415,18 +314,17 @@ def main():
         "reggae",
     ])
     disp.plot(xticks_rotation="vertical")
-    plt.savefig("ConfPlotGRU.png")
+    plt.savefig("ConfPlot.png")
     plt.show()
     plt.clf()
-    
     # visualization loss
     plt.plot(epoch_list, val_loss_list, color = "red", label = "Val loss")
     plt.plot(epoch_list, train_loss_list, color = "blue", label = "Train loss")
     plt.xlabel("# of epochs")
     plt.ylabel("Loss")
-    plt.title("GRU: Loss vs # epochs")
+    plt.title("LSTM: Loss vs # epochs")
     plt.legend()
-    plt.savefig('graphLossGRU.png')
+    plt.savefig('graph1.png')
     plt.show()
     plt.clf()
 
@@ -435,9 +333,9 @@ def main():
     plt.plot(epoch_list, train_accuracy_list, color = "blue", label = "Train Acc")
     plt.xlabel("# of epochs")
     plt.ylabel("Accuracy")
-    plt.title("GRU: Accuracy vs # epochs")
+    plt.title("LSTM: Accuracy vs # epochs")
     plt.legend()
-    plt.savefig('graphAccuracyGRU.png')
+    plt.savefig('graph.png')
     plt.show()
 
 
