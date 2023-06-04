@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-    PyTorch implementation of a simple 2-layer-deep LSTM for genre classification of musical audio.
-    Feeding the LSTM stack are spectral {centroid, contrast}, chromagram & MFCC features (33 total values)
+    PyTorch implementation of a simple 2-layer-deep RNN for genre classification of musical audio.
+    Feeding the RNN stack are spectral {centroid, contrast}, chromagram & MFCC features (33 total values)
 
     Question: Why is there a PyTorch implementation, when we already have Keras/Tensorflow?
     Answer:   So that we can learn more PyTorch and experiment with modulations on basic
@@ -26,29 +26,30 @@ from GenreFeatureData import (
 )  # local python class with Audio feature extraction (librosa)
 
 # class definition
-class LSTM(nn.Module):
+class RNN(nn.Module):
     def __init__(self, input_dim, hidden_dim, batch_size, output_dim=8, num_layers=2):
-        super(LSTM, self).__init__()
+        super(RNN, self).__init__()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
         self.num_layers = num_layers
 
-        # setup LSTM layers
-        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0) #dropout = 0.5dropout = 0.5, bias = True
+        # setup RNN layers
+        self.rnn = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers, dropout = 0.5,  bias = False)
 
         # ---------------------batchnormalisation---------------------------------------
-        #self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
+        self.batch = nn.BatchNorm1d(num_features = self.hidden_dim)
 
         # setup output layer
         self.linear = nn.Linear(self.hidden_dim, output_dim)
 
     def forward(self, input, h):
-        # lstm step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
-        # Note: lstm_out contains outputs for every step of the sequence we are looping over (for BPTT)
-        # but we just need the output of the last step of the sequence, aka lstm_out[-1]
-        lstm_out, hidden = self.lstm(input, h)
-        logits = self.linear(lstm_out[-1])              # equivalent to return_sequences=False from Keras
+        # rnn step => then ONLY take the sequence's final timetep to pass into the linear/dense layer
+        # Note: rnn_out contains outputs for every step of the sequence we are looping over (for BPTT)
+        # but we just need the output of the last step of the sequence, aka rnn_out[-1]
+        out, hidden = self.rnn(input, h)
+        out = self.batch(out[-1])
+        logits = self.linear(out)              # equivalent to return_sequences=False from Keras
         genre_scores = F.log_softmax(logits, dim=1)
         return genre_scores, hidden
     
@@ -108,7 +109,7 @@ def main():
 
     # Define model
     print("Build Rnn RNN model ...")
-    model = LSTM(
+    model = RNN(
         input_dim=33, hidden_dim=128, batch_size=batch_size, output_dim=8, num_layers=2
     )
     
@@ -116,11 +117,11 @@ def main():
     loss_function = nn.NLLLoss()     #nn.NLLLoss()  # expects ouputs from LogSoftmax #nn.CrossEntropyLoss()
 
     #----------------------------------------------------------------------------------
-    optimizer = optim.Adam(model.parameters(), lr=0.001) #, weight_decay = 0.01weight_decay = 0.1
+    optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.01)
     #defineix com decau el lr
     #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.01, max_lr=0.1, cycle_momentum= False)
 
-    # To keep LSTM stateful between batches, you can set stateful = True, which is not suggested for training
+    # To keep RNN stateful between batches, you can set stateful = True, which is not suggested for training
     stateful = False
 
     train_on_gpu = torch.cuda.is_available()
@@ -148,35 +149,30 @@ def main():
     
 
     #Inicialització random i normalitzada
-    # for name, w in model.named_parameters():
-    #     if "weight_ih" in name:
-    #         nn.init.xavier_uniform(w.data)
-        
-    #     if "bias" in name:
-    #         nn.init.zeros_(w.data) 
+  
     
     
     
-    # for name, w in model.named_parameters():
-    #     if 'lstm' in name:
-    #         if 'weight_ih' in name:
-    #             nn.init.xavier_uniform_(w.data)
+    for name, w in model.named_parameters():
+        if 'rnn' in name:
+            if 'weight_ih' in name:
+                nn.init.xavier_uniform_(w.data)
 
-    #         elif 'weight_hh' in name:
-    #             nn.init.xavier_uniform_(w.data)
+            elif 'weight_hh' in name:
+                nn.init.xavier_uniform_(w.data)
 
-    #         elif 'bias_ih' in name:
-    #             nn.init.zeros_(w.data) 
+            elif 'bias_ih' in name:
+                nn.init.zeros_(w.data) 
 
-    #         elif 'bias_hh' in name:
-    #             nn.init.zeros_(w.data) 
+            elif 'bias_hh' in name:
+                nn.init.zeros_(w.data) 
 
-    #     elif 'linear' in name:
-    #         if 'weight' in name:
-    #             nn.init.xavier_uniform_(w.data)
+        elif 'linear' in name:
+            if 'weight' in name:
+                nn.init.xavier_uniform_(w.data)
 
-    #         elif 'bias' in name:
-    #             nn.init.zeros_(w.data) 
+            elif 'bias' in name:
+                nn.init.zeros_(w.data) 
     
     
 
@@ -184,7 +180,7 @@ def main():
 
         train_running_loss, train_acc = 0.0, 0.0
 
-        # Init hidden state - if you don't want a stateful LSTM (between epochs)
+        # Init hidden state - if you don't want a stateful RNN (between epochs)
         
         #-----------------------------------------2 hidden layers--------------------------------
         #h_0, c_0 = model.init_hidden(batch_size)
