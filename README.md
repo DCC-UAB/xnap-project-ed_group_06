@@ -43,10 +43,10 @@ La versió recomanada per l’execució dels codi és a partir de la 3.8, a part
 
 # Execució
 Per tal de poder executar els diferents models implementats:
-S’ha d’estar al directori xnap-project-ed_group_06.
-Després fer un cd a LSTM-Music-Genre-Classification-master/LSTM-Music-Genre-Classification-master/.
-Realitzar Data augmentation si és necessari.
-Executar el model desitjat.
+- S’ha d’estar al directori xnap-project-ed_group_06.
+- Després fer un cd a LSTM-Music-Genre-Classification-master/LSTM-Music-Genre-Classification-master/.
+- Realitzar Data augmentation si és necessari.
+- Executar el model desitjat.
 
 # Models
 Tots els models tenen com  a configuració determinada, 400 èpoques d’execució, batch size de 35, batch normalization, optimizer ADAM, lr de 0.001, weight decay, dropout i inicialització de pesos. Menys el lstm_genre_classifier_pytorch_lightning.py i lstm_genre_classifier_keras.py, que són arxius per desenvolupar el projecte amb altres llibreries que no s’han arribat a utilitzar. 
